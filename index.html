@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>three_8thwall_tests</title>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="./css/style.css">
+	
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r122/three.min.js"></script>
+
+	<script src="//cdn.8thwall.com/web/xrextras/xrextras.js"></script>
+	<script async src="//apps.8thwall.com/xrweb?appKey=ecXC7WgUeeoSxJaBTjpSxdCjQLVZhWgroav3GayBgdwIoXLbz6uEklieTJ6ot3jOHK7oMZ"></script>
+
+</head>
+<body>
+	<canvas id="camerafeed"></canvas>
+	<script type="text/javascript" src="./js/custom_pipeline.js"></script>
+	<script type="text/javascript">
+		const onxrloaded = () => {			
+			XR8.xrController().configure({
+				disableWorldTracking: false
+			})
+			
+			XR8.addCameraPipelineModules([
+				XR8.GlTextureRenderer.pipelineModule(),
+				//XR8.Threejs.pipelineModule(),     
+				XR8.XrController.pipelineModule(),         
+			    XRExtras.AlmostThere.pipelineModule(),     
+			    XRExtras.FullWindowCanvas.pipelineModule(),
+			    XRExtras.Loading.pipelineModule(),     
+			    XRExtras.RuntimeError.pipelineModule(),
+			    CustomPipeline()
+			])
+
+			XR8.run({canvas: document.getElementById('camerafeed')})
+		}
+		const load = () => { XRExtras.Loading.showLoading({onxrloaded}) }
+
+		window.onload = () => { 
+			if(window.XRExtras){
+				load()
+			}else{
+				window.addEventListener('xrextrasloaded', load) 
+			}
+		}
+
+	</script>
+</body>
+</html>
