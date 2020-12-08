@@ -258,24 +258,17 @@ export const CustomPipeline = (_config = {}) => {
 			torus.rotateZ(.01)
 		},
 		onRender:() => {
+			// Just to draw torus on WebGLRenderTarget
 			renderer.setRenderTarget(rtt)
 			renderer.clear()
-			//renderer.clearDepth()
 			renderer.render(sceneOrtho, cameraOrtho)
 			renderer.setRenderTarget(null)
 			
-
-			if(cube){
-				cube.material.map = rtt.texture
-				//console.log('cube')
-			}
-
+			// uncomment next 2 lines when render with no composer
+			/*renderer.clearDepth()
+			renderer.render(scene, camera)*/
 			
-			//renderer.clearDepth()
-			//renderer.render(scene, camera)
 			composer.render()
-			//renderer.setRenderTarget(null)
-
 		},
 		onCanvasSizeChange ({ GLctx, videoWidth, videoHeight, canvasWidth, canvasHeight }) {
 			if(started){
