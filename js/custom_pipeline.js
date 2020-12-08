@@ -9,18 +9,24 @@ import { TexturePass } from '../../three.js-123/examples/jsm/postprocessing/Text
 import { ClearPass } from '../../three.js-123/examples/jsm/postprocessing/ClearPass.js';
 import { CopyShader } from '../../three.js-123/examples/jsm/shaders/CopyShader.js';
 
-export const CustomPipeline = (canvas, _config = {}) => {
+export const CustomPipeline = (_config = {}) => {
 	const config = {
-
+		canvas:null,
+		useAlternative:false
 	}
 
 	Object.assign(config, _config)
+
+	if(config.canvas){
+		config.useAlternative = true
+	}
 
 	const raycaster = new THREE.Raycaster()
 	const rayOrigin = new THREE.Vector2(0,0)
 	const tapPosition = new THREE.Vector2()
 
-	let alternativeCanvas = canvas
+
+	let alternativeCanvas = config.canvas
 
 	let camera, scene, renderer
 	let cameraOrtho, sceneOrtho
@@ -28,6 +34,7 @@ export const CustomPipeline = (canvas, _config = {}) => {
 	let started = false
 	let rtt, quad, torus, cube, halfWidth, halfHeight 
 	let composer , texturePass, clearPass, renderPass
+	let texture
 
 	const handleTouchHandler = (e) => {
 		console.log(e)
@@ -154,23 +161,33 @@ export const CustomPipeline = (canvas, _config = {}) => {
 	}
 
 	const initComposer = () => {
-		composer = new EffectComposer( renderer );
+		composer = new EffectComposer( renderer )
 		
-		clearPass = new ClearPass( 0xFFFFFF, 0.0 );
-		composer.addPass( clearPass );
+		clearPass = new ClearPass( 0xFFFFFF, 0.0 )
+		composer.addPass( clearPass )
+
+		if(!config.useAlternative){
+			texturePass = new TexturePass()
+			composer.addPass( texturePass )
+
+			const video = document.querySelector('video')
+			
+			texture = new THREE.VideoTexture(video)
+			texturePass.map = texture
+		}
+
 
 		renderPass = new RenderPass( scene, camera )
 		renderPass.clear = false
-		composer.addPass( renderPass );
+		composer.addPass( renderPass )
 
-		const effect1 = new ShaderPass( DotScreenShader );
-		effect1.uniforms[ 'scale' ].value = 2;
-		composer.addPass( effect1 );
+		const effect1 = new ShaderPass( DotScreenShader )
+		effect1.uniforms[ 'scale' ].value = 2
+		composer.addPass( effect1 )
 
-		const effect2 = new ShaderPass( RGBShiftShader );
-		effect2.uniforms[ 'amount' ].value = 0.0015;
-		composer.addPass( effect2 );
-
+		const effect2 = new ShaderPass( RGBShiftShader )
+		effect2.uniforms[ 'amount' ].value = 0.0015
+		composer.addPass( effect2 )
 	}
 
 	const base = {
@@ -181,13 +198,15 @@ export const CustomPipeline = (canvas, _config = {}) => {
 			scene = new THREE.Scene()
 			scene.add(camera)
 
-			console.log(GLctx)
-
+		
+			const nCanvas = (config.useAlternative) ? alternativeCanvas : canvas
+			const nContext = (config.useAlternative) ?  (alternativeCanvas.getContext('webgl', {alpha: true})) : GLctx
+	
 			renderer = new THREE.WebGLRenderer({
 				alpha:true,
 				antialias:false,
-				canvas:alternativeCanvas,
-				context:alternativeCanvas.getContext('webgl', {alpha: true})
+				canvas:nCanvas,
+				context:nContext
 			})
 
 			renderer.autoClear = false
@@ -214,6 +233,10 @@ export const CustomPipeline = (canvas, _config = {}) => {
 		    started = true
 		},
 		onUpdate:({ processCpuResult }) => {
+
+			if(texture){
+				texture.update()
+			}
 
 			camera.updateProjectionMatrix()
 

@@ -22,7 +22,6 @@
 
 	<script type="module">
 		import {CustomPipeline} from './js/custom_pipeline.js'
-		//import { CustomThreePipeline } from './js/custom_three_pipeline.js'
 		import { FullWindowCanvas } from './js/full_window_canvas.js'
 
 		const onxrloaded = () => {			
@@ -33,10 +32,12 @@
 			XR8.addCameraPipelineModules([
 				XR8.GlTextureRenderer.pipelineModule(),
 				//XR8.Threejs.pipelineModule(),  
-				//CustomThreePipeline(document.querSelector('#mycanvas')),   
-				CustomPipeline(document.querySelector('#mycanvas')),
+				CustomPipeline({
+					canvas:document.querySelector('#mycanvas')
+				}),
 				XR8.XrController.pipelineModule(),         
 			    XRExtras.AlmostThere.pipelineModule(),     
+			    //XRExtras.FullWindowCanvas.pipelineModule(),
 			    FullWindowCanvas(document.querySelector('#mycanvas')),
 			    XRExtras.Loading.pipelineModule(),     
 			    XRExtras.RuntimeError.pipelineModule(),
