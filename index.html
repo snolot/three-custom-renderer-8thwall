@@ -5,16 +5,26 @@
 	<meta charset="utf-8">
 	<link rel="stylesheet" type="text/css" href="./css/style.css">
 	
-	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r122/three.min.js"></script>
+	<script type="text/javascript">
+		let THREE= window
+	</script>
+	<!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r122/three.min.js"></script> -->
 
 	<script src="//cdn.8thwall.com/web/xrextras/xrextras.js"></script>
 	<script async src="//apps.8thwall.com/xrweb?appKey=ecXC7WgUeeoSxJaBTjpSxdCjQLVZhWgroav3GayBgdwIoXLbz6uEklieTJ6ot3jOHK7oMZ"></script>
 
 </head>
 <body>
+	<canvas id="mycanvas"></canvas>
 	<canvas id="camerafeed"></canvas>
-	<script type="text/javascript" src="./js/custom_pipeline.js"></script>
-	<script type="text/javascript">
+
+	<!-- <script type="text/javascript" src="./js/custom_pipeline.js"></script> -->
+
+	<script type="module">
+		import {CustomPipeline} from './js/custom_pipeline.js'
+		//import { CustomThreePipeline } from './js/custom_three_pipeline.js'
+		import { FullWindowCanvas } from './js/full_window_canvas.js'
+
 		const onxrloaded = () => {			
 			XR8.xrController().configure({
 				disableWorldTracking: false
@@ -22,13 +32,16 @@
 			
 			XR8.addCameraPipelineModules([
 				XR8.GlTextureRenderer.pipelineModule(),
-				//XR8.Threejs.pipelineModule(),     
+				//XR8.Threejs.pipelineModule(),  
+				//CustomThreePipeline(document.querSelector('#mycanvas')),   
+				CustomPipeline(document.querySelector('#mycanvas')),
 				XR8.XrController.pipelineModule(),         
 			    XRExtras.AlmostThere.pipelineModule(),     
-			    XRExtras.FullWindowCanvas.pipelineModule(),
+			    FullWindowCanvas(document.querySelector('#mycanvas')),
 			    XRExtras.Loading.pipelineModule(),     
 			    XRExtras.RuntimeError.pipelineModule(),
-			    CustomPipeline()
+			    
+			    
 			])
 
 			XR8.run({canvas: document.getElementById('camerafeed')})

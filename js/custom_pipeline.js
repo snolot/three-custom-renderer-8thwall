@@ -1,4 +1,15 @@
-const CustomPipeline = (_config) => {
+import * as THREE from '../../three.js-123/build/three.module.js'
+
+import { EffectComposer } from '../../three.js-123/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from '../../three.js-123/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from '../../three.js-123/examples/jsm/postprocessing/ShaderPass.js';
+import { RGBShiftShader } from '../../three.js-123/examples/jsm/shaders/RGBShiftShader.js';
+import { DotScreenShader } from '../../three.js-123/examples/jsm/shaders/DotScreenShader.js';
+import { TexturePass } from '../../three.js-123/examples/jsm/postprocessing/TexturePass.js';
+import { ClearPass } from '../../three.js-123/examples/jsm/postprocessing/ClearPass.js';
+import { CopyShader } from '../../three.js-123/examples/jsm/shaders/CopyShader.js';
+
+export const CustomPipeline = (canvas, _config = {}) => {
 	const config = {
 
 	}
@@ -9,11 +20,14 @@ const CustomPipeline = (_config) => {
 	const rayOrigin = new THREE.Vector2(0,0)
 	const tapPosition = new THREE.Vector2()
 
+	let alternativeCanvas = canvas
+
 	let camera, scene, renderer
 	let cameraOrtho, sceneOrtho
 	let surface, modelAdded = false
 	let started = false
 	let rtt, quad, torus, cube, halfWidth, halfHeight 
+	let composer , texturePass, clearPass, renderPass
 
 	const handleTouchHandler = (e) => {
 		console.log(e)
@@ -46,7 +60,7 @@ const CustomPipeline = (_config) => {
 	const initOrtho = () => {
 
 		sceneOrtho = new THREE.Scene()
-		sceneOrtho.background = new THREE.Color(0xFF3300)
+		
 
 		halfWidth = innerWidth / 2
 		halfHeight = innerHeight / 2
@@ -54,8 +68,9 @@ const CustomPipeline = (_config) => {
 		cameraOrtho = new THREE.OrthographicCamera( - halfWidth, halfWidth, halfHeight, - halfHeight, - 10000, 10000 );
 		cameraOrtho.position.z = 20
 
-		var diffuseMap = new THREE.TextureLoader().load( "../three.js-dev/examples/textures/cube/SwedishRoyalCastle/pz.jpg" );
+		var diffuseMap = new THREE.TextureLoader().load( "../../three.js-dev/examples/textures/cube/SwedishRoyalCastle/pz.jpg" );
 		//diffuseMap.encoding = THREE.sRGBEncoding;
+		sceneOrtho.background = diffuseMap
 
 		var materialColor = new THREE.MeshPhongMaterial( {
 			map: diffuseMap
@@ -86,7 +101,7 @@ const CustomPipeline = (_config) => {
 
 	const initBoxes = (point) => {
 		console.log('initBoxes')
-		cube = new THREE.Mesh(new THREE.BoxBufferGeometry(1,1,1), new THREE.MeshPhongMaterial({color:0xFFCC00, map:new THREE.TextureLoader().load( "../three.js-dev/examples/textures/cube/SwedishRoyalCastle/pz.jpg" )}))
+		cube = new THREE.Mesh(new THREE.BoxBufferGeometry(1,1,1), new THREE.MeshPhongMaterial({color:0xFFCC00, map:new THREE.TextureLoader().load( "../../three.js-dev/examples/textures/cube/SwedishRoyalCastle/pz.jpg" )}))
 	    scene.add(cube)
 	    cube.receiveShadow = true
 	    cube.castShadow = true
@@ -119,6 +134,8 @@ const CustomPipeline = (_config) => {
 	}
 
 	const initScene = () => {
+
+
 		console.log('initScene')
 		const planeGeometry = new THREE.PlaneBufferGeometry( 100, 100 )
 		const planeMaterial = new THREE.ShadowMaterial({opacity:.3})
@@ -136,6 +153,26 @@ const CustomPipeline = (_config) => {
 		renderer.domElement.addEventListener('touchmove',  (event) => { event.preventDefault() }) 
 	}
 
+	const initComposer = () => {
+		composer = new EffectComposer( renderer );
+		
+		clearPass = new ClearPass( 0xFFFFFF, 0.0 );
+		composer.addPass( clearPass );
+
+		renderPass = new RenderPass( scene, camera )
+		renderPass.clear = false
+		composer.addPass( renderPass );
+
+		const effect1 = new ShaderPass( DotScreenShader );
+		effect1.uniforms[ 'scale' ].value = 2;
+		composer.addPass( effect1 );
+
+		const effect2 = new ShaderPass( RGBShiftShader );
+		effect2.uniforms[ 'amount' ].value = 0.0015;
+		composer.addPass( effect2 );
+
+	}
+
 	const base = {
 		name:'custom-pipeline',
 		onStart:({ canvas, GLctx }) => {
@@ -144,18 +181,21 @@ const CustomPipeline = (_config) => {
 			scene = new THREE.Scene()
 			scene.add(camera)
 
+			console.log(GLctx)
+
 			renderer = new THREE.WebGLRenderer({
-				alpha:false,
+				alpha:true,
 				antialias:false,
-				canvas,
-				GLctx
+				canvas:alternativeCanvas,
+				context:alternativeCanvas.getContext('webgl', {alpha: true})
 			})
 
 			renderer.autoClear = false
 			renderer.setSize(innerWidth, innerHeight)
 			renderer.shadowMap.enabled = true;
 			renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
+			renderer.setClearColor(0xFFFFFF, 0)
+			
 			camera.position.set(0,2,0)
 
 			XR8.XrController.updateCameraProjectionMatrix({
@@ -169,6 +209,7 @@ const CustomPipeline = (_config) => {
 		    initOrtho()
 		    initLights(scene)
 		    initLights(sceneOrtho)
+		    initComposer()
 
 		    started = true
 		},
@@ -196,24 +237,27 @@ const CustomPipeline = (_config) => {
 		onRender:() => {
 			renderer.setRenderTarget(rtt)
 			renderer.clear()
+			//renderer.clearDepth()
 			renderer.render(sceneOrtho, cameraOrtho)
 			renderer.setRenderTarget(null)
 			
 
 			if(cube){
 				cube.material.map = rtt.texture
-				console.log('cube')
+				//console.log('cube')
 			}
 
 			
-			renderer.clearDepth()
-			renderer.render(scene, camera)
+			//renderer.clearDepth()
+			//renderer.render(scene, camera)
+			composer.render()
 			//renderer.setRenderTarget(null)
 
 		},
 		onCanvasSizeChange ({ GLctx, videoWidth, videoHeight, canvasWidth, canvasHeight }) {
 			if(started){
 				renderer.setSize(canvasWidth, canvasHeight)
+				composer.setSize(canvasWidth, canvasHeight)
 				camera.aspect = canvasWidth/canvasHeight
 				camera.updateProjectionMatrix()
 			}			
