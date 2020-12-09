@@ -9,6 +9,9 @@ import { TexturePass } from '../../three.js-123/examples/jsm/postprocessing/Text
 import { ClearPass } from '../../three.js-123/examples/jsm/postprocessing/ClearPass.js';
 import { CopyShader } from '../../three.js-123/examples/jsm/shaders/CopyShader.js';
 
+import { WaterPass } from '../shaders/WaterPass.js'
+//import { WaterRefractionPass } from '../shaders/WaterRefractionPass.js'
+
 export const CustomPipeline = (_config = {}) => {
 	const config = {
 		canvas:null,
@@ -33,8 +36,8 @@ export const CustomPipeline = (_config = {}) => {
 	let surface, modelAdded = false
 	let started = false
 	let rtt, quad, torus, cube, halfWidth, halfHeight 
-	let composer , texturePass, clearPass, renderPass
-	let texture
+	let composer, composer2, texturePass, clearPass, renderPass
+	let texture, waterPass
 
 	const handleTouchHandler = (e) => {
 		console.log(e)
@@ -88,11 +91,6 @@ export const CustomPipeline = (_config = {}) => {
 	 	torus = new THREE.Mesh( geometry, material );
 	 	torus.scale.set(20, 20, 20)
 	 	sceneOrtho.add(torus)
-
-		/*quad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 1, 1 ), materialColor );
-		quad.position.z = - 500;
-		quad.scale.set( innerWidth, innerHeight, 1 );
-		sceneOrtho.add( quad );*/
 	}
 
 	const initRTT = () => {
@@ -161,6 +159,14 @@ export const CustomPipeline = (_config = {}) => {
 	}
 
 	const initComposer = () => {
+
+		const rtParameters = {
+			minFilter: THREE.LinearFilter,
+			magFilter: THREE.LinearFilter,
+			format: THREE.RGBFormat,
+			stencilBuffer: true
+		}
+
 		composer = new EffectComposer( renderer )
 		
 		clearPass = new ClearPass( 0xFFFFFF, 0.0 )
@@ -176,18 +182,22 @@ export const CustomPipeline = (_config = {}) => {
 			texturePass.map = texture
 		}
 
-
 		renderPass = new RenderPass( scene, camera )
 		renderPass.clear = false
 		composer.addPass( renderPass )
 
-		const effect1 = new ShaderPass( DotScreenShader )
-		effect1.uniforms[ 'scale' ].value = 2
-		composer.addPass( effect1 )
+		const effect1 = new WaterPass()
+		composer.addPass(effect1)
 
-		const effect2 = new ShaderPass( RGBShiftShader )
-		effect2.uniforms[ 'amount' ].value = 0.0015
+		/*const effect2 = new ShaderPass( DotScreenShader )
+		effect2.uniforms[ 'scale' ].value = 2
 		composer.addPass( effect2 )
+
+		const effect3 = new ShaderPass( RGBShiftShader )
+		effect3.uniforms[ 'amount' ].value = 0.0015
+		composer.addPass( effect3 )*/
+
+
 	}
 
 	const base = {
@@ -198,7 +208,6 @@ export const CustomPipeline = (_config = {}) => {
 			scene = new THREE.Scene()
 			scene.add(camera)
 
-		
 			const nCanvas = (config.useAlternative) ? alternativeCanvas : canvas
 			const nContext = (config.useAlternative) ?  (alternativeCanvas.getContext('webgl', {alpha: true})) : GLctx
 	
@@ -250,7 +259,7 @@ export const CustomPipeline = (_config = {}) => {
 				elements[i] = intrinsics[i]
 			}
 
-			camera.projectionMatrixInverse.getInverse(camera.projectionMatrix)
+			camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
 			camera.setRotationFromQuaternion(rotation)
 			camera.position.copy(position)
 
@@ -264,11 +273,16 @@ export const CustomPipeline = (_config = {}) => {
 			renderer.render(sceneOrtho, cameraOrtho)
 			renderer.setRenderTarget(null)
 			
+			if(cube){
+				cube.material.map = rtt.texture
+			}
 			// uncomment next 2 lines when render with no composer
 			/*renderer.clearDepth()
 			renderer.render(scene, camera)*/
 			
+
 			composer.render()
+			//composer2.render()
 		},
 		onCanvasSizeChange ({ GLctx, videoWidth, videoHeight, canvasWidth, canvasHeight }) {
 			if(started){
